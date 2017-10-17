@@ -59,7 +59,7 @@ function yourprefix_init() {
     ) );
 
 }
-add_action( 'plugins_loaded', 'yourprefix_init' );
+add_action( 'ct_init', 'yourprefix_init' );
 
 /* ----------------------------------
  * LIST VIEW HOOKS

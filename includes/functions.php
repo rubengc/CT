@@ -33,6 +33,25 @@ function ct_register_table( $name, $args ) {
 }
 
 /**
+ * Setup the global table
+ *
+ * @param CT_Table|string $object CT_Table object or CT_Table name
+ * @return CT_Table $ct_object
+ */
+function ct_setup_table( $object ) {
+
+    global $ct_tables, $ct_object;
+
+    if( is_object( $object ) ) {
+        $ct_object = $object;
+    } else if( gettype( $object ) === 'string' && isset( $ct_tables[$object] ) ) {
+        $ct_object = $ct_tables[$object];
+    }
+
+    return $ct_object;
+}
+
+/**
  * @param CT_Table $ct_table
  *
  * @return array
