@@ -27,21 +27,21 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
         public function init() {
 
-            global $ct_tables, $ct_object;
+            global $ct_registered_tables, $ct_table;
 
-            if( ! isset( $ct_tables[$this->name] ) ) {
+            if( ! isset( $ct_registered_tables[$this->name] ) ) {
                 wp_die( __( 'Invalid item type.' ) );
             }
 
-            // Setup global $ct_object
-            $ct_object = $ct_tables[$this->name];
+            // Setup global $ct_table
+            $ct_table = $ct_registered_tables[$this->name];
 
             // If not CT object, die
-            if ( ! $ct_object )
+            if ( ! $ct_table )
                 wp_die( __( 'Invalid item type.' ) );
 
             // If not CT object allow ui, die
-            if ( ! $ct_object->show_ui ) {
+            if ( ! $ct_table->show_ui ) {
                 wp_die( __( 'Sorry, you are not allowed to edit items of this type.' ) );
             }
 
@@ -50,17 +50,17 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
                 $this->save();
             }
 
-            $primary_key = $ct_object->db->primary_key;
+            $primary_key = $ct_table->db->primary_key;
 
             if( isset( $_GET[$primary_key] ) ) {
                 // Editing object
                 $this->object_id = (int) $_GET[$primary_key];
-                $this->object = $ct_object->db->get( $this->object_id );
+                $this->object = $ct_table->db->get( $this->object_id );
                 $this->editing = true;
 
                 // If not id, return to list
                 if ( empty( $this->object_id ) ) {
-                    wp_redirect( ct_get_list_link( $ct_object->name ) );
+                    wp_redirect( ct_get_list_link( $ct_table->name ) );
                     exit();
                 }
 
@@ -71,8 +71,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
                 // If not current user can edit, die
                 if ( ! current_user_can( 'edit_item', $this->object_id ) ) {
-                    // TODO: Uncomment on find a way to add caps
-                    //wp_die( __( 'Sorry, you are not allowed to edit this item.' ) );
+                    wp_die( __( 'Sorry, you are not allowed to edit this item.' ) );
                 }
 
             } else {
@@ -80,7 +79,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
                 // If not id, return to list
                 if ( empty( $this->object_id ) ) {
-                    wp_redirect( ct_get_list_link( $ct_object->name ) );
+                    wp_redirect( ct_get_list_link( $ct_table->name ) );
                     exit();
                 }
 
@@ -92,8 +91,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
                 // If not current user can create, die
                 if ( ! current_user_can( 'create_item', $this->object_id ) ) {
-                    // TODO: Uncomment on find a way to add caps
-                    // wp_die( __( 'Sorry, you are not allowed to create items of this type.' ) );
+                    wp_die( __( 'Sorry, you are not allowed to create items of this type.' ) );
                 }
             }
 
@@ -103,13 +101,13 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
             );
 
             /**
-             * Filters the object updated messages.
+             * Filters the table updated messages.
              *
              * @since 1.0.0
              *
              * @param array $messages Post updated messages. For defaults @see $messages declarations above.
              */
-            $messages = apply_filters( 'ct_object_updated_messages', $messages );
+            $messages = apply_filters( 'ct_table_updated_messages', $messages );
 
             // Setup screen message
             if ( isset($_GET['message']) ) {
@@ -117,7 +115,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
                 $_GET['message'] = absint( $_GET['message'] );
 
                 if ( isset($messages[$_GET['message']]) )
-                    $this->message = sprintf( $messages[$_GET['message']], $ct_object->labels->singular_name );
+                    $this->message = sprintf( $messages[$_GET['message']], $ct_table->labels->singular_name );
 
             }
 
@@ -128,7 +126,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
             }
 
             // Register submitdiv metabox
-            add_meta_box( 'submitdiv', __( 'Save Changes' ), array( $this, 'submit_meta_box' ), $ct_object->name, 'side', 'core' );
+            add_meta_box( 'submitdiv', __( 'Save Changes' ), array( $this, 'submit_meta_box' ), $ct_table->name, 'side', 'core' );
 
             /**
              * Fires after all built-in meta boxes have been added.
@@ -138,7 +136,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
              * @param string  $post_type Post type.
              * @param WP_Post $post      Post object.
              */
-            do_action( 'add_meta_boxes', $ct_object->name, $this->object );
+            do_action( 'add_meta_boxes', $ct_table->name, $this->object );
 
             /**
              * Fires after all built-in meta boxes have been added, contextually for the given post type.
@@ -149,7 +147,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
              *
              * @param WP_Post $post Post object.
              */
-            do_action( "add_meta_boxes_{$ct_object->name}", $this->object );
+            do_action( "add_meta_boxes_{$ct_table->name}", $this->object );
 
             /**
              * Fires after meta boxes have been added.
@@ -162,11 +160,11 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
              * @param string  $context   string  Meta box context.
              * @param WP_Post $object    The object.
              */
-            do_action( 'do_meta_boxes', $ct_object->name, 'normal', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'normal', $this->object );
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'do_meta_boxes', $ct_object->name, 'advanced', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'advanced', $this->object );
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'do_meta_boxes', $ct_object->name, 'side', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'side', $this->object );
 
             //add_screen_option( 'layout_columns', array( 'max' => $this->columns, 'default' => $this->columns ) );
         }
@@ -193,31 +191,31 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
          */
         public function render_meta_boxes_preferences() {
 
-            global $wp_meta_boxes, $ct_object;
+            global $wp_meta_boxes, $ct_table;
 
             // TODO: Forced to place it here until fix issue with load-{pagehook}
 
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'add_meta_boxes', $ct_object->name, $this->object );
+            do_action( 'add_meta_boxes', $ct_table->name, $this->object );
 
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( "add_meta_boxes_{$ct_object->name}", $this->object );
+            do_action( "add_meta_boxes_{$ct_table->name}", $this->object );
 
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'do_meta_boxes', $ct_object->name, 'normal', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'normal', $this->object );
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'do_meta_boxes', $ct_object->name, 'advanced', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'advanced', $this->object );
             /** This action is documented in wp-admin/edit-form-advanced.php */
-            do_action( 'do_meta_boxes', $ct_object->name, 'side', $this->object );
+            do_action( 'do_meta_boxes', $ct_table->name, 'side', $this->object );
 
-            if ( ! isset( $wp_meta_boxes[ $ct_object->name ] ) ) {
+            if ( ! isset( $wp_meta_boxes[ $ct_table->name ] ) ) {
                 return;
             }
             ?>
 
             <fieldset class="metabox-prefs">
                 <legend><?php _e( 'Boxes' ); ?></legend>
-                <?php meta_box_prefs( $ct_object->name ); ?>
+                <?php meta_box_prefs( $ct_table->name ); ?>
             </fieldset>
 
             <?php
@@ -260,7 +258,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
         public function submit_meta_box( $object ) {
 
-            global $ct_object;
+            global $ct_table;
 
             $submit_label = __( 'Add' );
 
@@ -281,14 +279,14 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
         public function save() {
 
-            global $ct_tables, $ct_object;
+            global $ct_registered_tables, $ct_table;
 
             // If not CT object, die
-            if ( ! $ct_object )
+            if ( ! $ct_table )
                 wp_die( __( 'Invalid item type.' ) );
 
             // If not CT object allow ui, die
-            if ( ! $ct_object->show_ui ) {
+            if ( ! $ct_table->show_ui ) {
                 wp_die( __( 'Sorry, you are not allowed to edit items of this type.' ) );
             }
 
@@ -298,7 +296,7 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
             $success = ct_update_object( $object_data );
 
-            $primary_key = $ct_object->db->primary_key;
+            $primary_key = $ct_table->db->primary_key;
             $object_id = $_POST[$primary_key];
 
             $location = add_query_arg( array( $primary_key => $object_id ), $this->get_link() );
@@ -316,15 +314,15 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
         public function render() {
 
-            global $ct_tables, $ct_object;
+            global $ct_registered_tables, $ct_table;
 
             $this->init();
 
             if( $this->editing ) {
-                $title = $ct_object->labels->edit_item;
-                $new_url = $ct_object->views->add->get_link();
+                $title = $ct_table->labels->edit_item;
+                $new_url = $ct_table->views->add->get_link();
             } else {
-                $title = $ct_object->labels->add_new_item;
+                $title = $ct_table->labels->add_new_item;
             }
 
             ?>
@@ -334,8 +332,8 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
                 <h1 class="wp-heading-inline"><?php echo $title; ?></h1>
 
                 <?php
-                if ( isset( $new_url ) && current_user_can( $ct_object->cap->create_items ) ) {
-                    echo ' <a href="' . esc_url( $new_url ) . '" class="page-title-action">' . esc_html( $ct_object->labels->add_new_item ) . '</a>';
+                if ( isset( $new_url ) && current_user_can( $ct_table->cap->create_items ) ) {
+                    echo ' <a href="' . esc_url( $new_url ) . '" class="page-title-action">' . esc_html( $ct_table->labels->add_new_item ) . '</a>';
                 }
                 ?>
 
@@ -347,29 +345,53 @@ if ( ! class_exists( 'CT_Edit_View' ) ) :
 
                 <form name="ct_edit_form" action="" method="post" id="ct_edit_form">
 
-                    <input type="hidden" id="object_id" name="<?php echo $ct_object->db->primary_key; ?>" value="<?php echo $this->object_id; ?>">
+                    <input type="hidden" id="object_id" name="<?php echo $ct_table->db->primary_key; ?>" value="<?php echo $this->object_id; ?>">
+
+                    <?php
+                    /**
+                     * Fires at the beginning of the edit form.
+                     *
+                     * At this point, the required hidden fields and nonces have already been output.
+                     *
+                     * @since 1.0.0
+                     *
+                     * @param stdClass $object Object.
+                     */
+                    do_action( 'ct_edit_form_top', $this->object ); ?>
 
                     <div id="poststuff">
 
                         <div id="post-body" class="metabox-holder columns-<?php echo get_current_screen()->get_columns() === 1 || $this->columns === 1 ? '1' : '2'; ?>">
+
                             <div id="postbox-container-1" class="postbox-container">
 
-                                <?php do_meta_boxes( $ct_object->name, 'side', $this->object ); ?>
+                                <?php do_meta_boxes( $ct_table->name, 'side', $this->object ); ?>
 
                             </div>
 
                             <div id="postbox-container-2" class="postbox-container">
 
-                                <?php do_meta_boxes( $ct_object->name, 'normal', $this->object ); ?>
+                                <?php do_meta_boxes( $ct_table->name, 'normal', $this->object ); ?>
 
-                                <?php do_meta_boxes( $ct_object->name, 'advanced', $this->object ); ?>
+                                <?php do_meta_boxes( $ct_table->name, 'advanced', $this->object ); ?>
 
                             </div>
+
                         </div><!-- /post-body -->
 
                         <br class="clear" />
 
                     </div><!-- /poststuff -->
+
+                    <?php
+                    /**
+                     * Fires at the end of the edit form.
+                     *
+                     * @since 1.0.0
+                     *
+                     * @param stdClass $object Object.
+                     */
+                    do_action( 'ct_edit_form_bottom', $this->object ); ?>
 
                 </form>
 

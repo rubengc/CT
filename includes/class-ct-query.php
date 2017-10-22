@@ -157,7 +157,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
 
         public function get_results() {
 
-            global $wpdb, $ct_object;
+            global $wpdb, $ct_table;
 
             $this->parse_query();
 
@@ -184,17 +184,17 @@ if ( ! class_exists( 'CT_Query' ) ) :
             if ( !isset($q['suppress_filters']) )
                 $q['suppress_filters'] = false;
 
-            if ( empty( $q['posts_per_page'] ) ) {
-                $q['posts_per_page'] = get_option( 'posts_per_page' );
+            if ( empty( $q['items_per_page'] ) ) {
+                $q['items_per_page'] = get_option( 'items_per_page', 20 );
             }
 
-            // posts_per_page
-            $q['posts_per_page'] = (int) $q['posts_per_page'];
+            // items_per_page
+            $q['items_per_page'] = (int) $q['items_per_page'];
 
-            if ( $q['posts_per_page'] < -1 )
-                $q['posts_per_page'] = abs($q['posts_per_page']);
-            elseif ( $q['posts_per_page'] == 0 )
-                $q['posts_per_page'] = 1;
+            if ( $q['items_per_page'] < -1 )
+                $q['items_per_page'] = abs($q['items_per_page']);
+            elseif ( $q['items_per_page'] == 0 )
+                $q['items_per_page'] = 1;
 
             // page
             if ( isset($q['page']) ) {
@@ -210,10 +210,10 @@ if ( ! class_exists( 'CT_Query' ) ) :
 
             switch ( $q['fields'] ) {
                 case 'ids':
-                    $fields = "{$ct_object->db->table_name}.{$ct_object->db->primary_key}";
+                    $fields = "{$ct_table->db->table_name}.{$ct_table->db->primary_key}";
                     break;
                 default:
-                    $fields = "{$ct_object->db->table_name}.*";
+                    $fields = "{$ct_table->db->table_name}.*";
             }
 
             // First let's clear some variables
@@ -263,7 +263,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
                     $orderby = '';
                 } else {
                     // Default order by primary key
-                    $orderby = "{$ct_object->db->table_name}.{$ct_object->db->primary_key} " . $q['order'];
+                    $orderby = "{$ct_table->db->table_name}.{$ct_table->db->primary_key} " . $q['order'];
                 }
             } elseif ( 'none' == $q['orderby'] ) {
                 $orderby = '';
@@ -288,7 +288,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
                     $orderby = implode( ' ' . $q['order'] . ', ', $orderby_array );
 
                     if ( empty( $orderby ) ) {
-                        $orderby = "{$ct_object->db->table_name}.{$ct_object->db->primary_key} " . $q['order'];
+                        $orderby = "{$ct_table->db->table_name}.{$ct_table->db->primary_key} " . $q['order'];
                     } elseif ( ! empty( $q['order'] ) ) {
                         $orderby .= " {$q['order']}";
                     }
@@ -332,9 +332,9 @@ if ( ! class_exists( 'CT_Query' ) ) :
                     $q['offset'] = absint( $q['offset'] );
                     $pgstrt = $q['offset'] . ', ';
                 } else {
-                    $pgstrt = absint( ( $page - 1 ) * $q['posts_per_page'] ) . ', ';
+                    $pgstrt = absint( ( $page - 1 ) * $q['items_per_page'] ) . ', ';
                 }
-                $limits = 'LIMIT ' . $pgstrt . $q['posts_per_page'];
+                $limits = 'LIMIT ' . $pgstrt . $q['items_per_page'];
             }
 
             $pieces = array( 'where', 'groupby', 'join', 'orderby', 'distinct', 'fields', 'limits' );
@@ -573,7 +573,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
             if ( !$q['no_found_rows'] && !empty($limits) )
                 $found_rows = 'SQL_CALC_FOUND_ROWS';
 
-            $this->request = $old_request = "SELECT $found_rows $distinct $fields FROM {$ct_object->db->table_name} $join WHERE 1=1 $where $groupby $orderby $limits";
+            $this->request = $old_request = "SELECT $found_rows $distinct $fields FROM {$ct_table->db->table_name} $join WHERE 1=1 $where $groupby $orderby $limits";
 
             if ( !$q['suppress_filters'] ) {
                 /**
@@ -618,7 +618,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
             }
 
             if ( null === $this->results ) {
-                $split_the_query = ( $old_request == $this->request && "{$ct_object->db->table_name}.*" == $fields && !empty( $limits ) && $q['posts_per_page'] < 500 );
+                $split_the_query = ( $old_request == $this->request && "{$ct_table->db->table_name}.*" == $fields && !empty( $limits ) && $q['items_per_page'] < 500 );
 
                 /**
                  * Filters whether to split the query.
@@ -637,7 +637,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
                 if ( $split_the_query ) {
                     // First get the IDs and then fill in the objects
 
-                    $this->request = "SELECT $found_rows $distinct {$ct_object->db->table_name}.{$ct_object->db->primary_key} FROM {$ct_object->db->table_name} $join WHERE 1=1 $where $groupby $orderby $limits";
+                    $this->request = "SELECT $found_rows $distinct {$ct_table->db->table_name}.{$ct_table->db->primary_key} FROM {$ct_table->db->table_name} $join WHERE 1=1 $where $groupby $orderby $limits";
 
                     /**
                      * Filters the Post IDs SQL request before sending.
@@ -780,11 +780,11 @@ if ( ! class_exists( 'CT_Query' ) ) :
          * @return string WHERE clause.
          */
         protected function parse_search( &$q ) {
-            global $wpdb, $ct_object;
+            global $wpdb, $ct_table;
 
             $search = '';
 
-            $search_fields = apply_filters( "ct_query_{$ct_object->name}_search_fields", array() );
+            $search_fields = apply_filters( "ct_query_{$ct_table->name}_search_fields", array() );
 
             if( empty( $search_fields ) ) {
                 return $search;
@@ -849,7 +849,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
                 $search_fields_args = array();
 
                 foreach( $search_fields as $search_field ) {
-                    $search_fields_where[] = "{$ct_object->db->table_name}.$search_field $like_op %s";
+                    $search_fields_where[] = "{$ct_table->db->table_name}.$search_field $like_op %s";
                     $search_fields_args[] = $like;
                 }
 
@@ -1006,7 +1006,7 @@ if ( ! class_exists( 'CT_Query' ) ) :
             $this->found_results = apply_filters_ref_array( 'ct_found_results', array( $this->found_results, &$this ) );
 
             if ( ! empty( $limits ) )
-                $this->max_num_pages = ceil( $this->found_results / $q['posts_per_page'] );
+                $this->max_num_pages = ceil( $this->found_results / $q['items_per_page'] );
         }
 
     }

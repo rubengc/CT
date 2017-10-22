@@ -13,42 +13,42 @@ defined( 'ABSPATH' ) || exit;
  * @return CT_Table
  */
 function ct_register_table( $name, $args ) {
-    global $ct_tables;
+    global $ct_registered_tables;
 
-    if ( ! is_array( $ct_tables ) ) {
-        $ct_tables = array();
+    if ( ! is_array( $ct_registered_tables ) ) {
+        $ct_registered_tables = array();
     }
 
     $name = sanitize_key( $name );
 
-    if( isset( $ct_tables[$name] ) ) {
-        return $ct_tables[$name];
+    if( isset( $ct_registered_tables[$name] ) ) {
+        return $ct_registered_tables[$name];
     }
 
-    $ct_object = new CT_Table( $name, $args );
+    $ct_table = new CT_Table( $name, $args );
 
-    $ct_tables[$name] = $ct_object;
+    $ct_registered_tables[$name] = $ct_table;
 
-    return $ct_object;
+    return $ct_table;
 }
 
 /**
  * Setup the global table
  *
  * @param CT_Table|string $object CT_Table object or CT_Table name
- * @return CT_Table $ct_object
+ * @return CT_Table $ct_table
  */
 function ct_setup_table( $object ) {
 
-    global $ct_tables, $ct_object;
+    global $ct_registered_tables, $ct_table;
 
     if( is_object( $object ) ) {
-        $ct_object = $object;
-    } else if( gettype( $object ) === 'string' && isset( $ct_tables[$object] ) ) {
-        $ct_object = $ct_tables[$object];
+        $ct_table = $object;
+    } else if( gettype( $object ) === 'string' && isset( $ct_registered_tables[$object] ) ) {
+        $ct_table = $ct_registered_tables[$object];
     }
 
-    return $ct_object;
+    return $ct_table;
 }
 
 /**
@@ -93,56 +93,32 @@ function ct_get_table_labels( $ct_table ) {
     return (object) $default_labels;
 }
 
-function ct_get_object_capabilities( $name, $args = array() ) {
+/**
+ * Execute CT role creation.
+ *
+ * @since 1.0.0
+ */
+function ct_populate_roles() {
 
-    if ( ! isset( $args['capability_type'] ) ) {
-        $args['capability_type'] = array( $name, $name . 's' );
-    } else if( ! is_array( $args['capability_type'] ) ) {
-        $args['capability_type'] = array( $args['capability_type'], $args['capability_type'] . 's' );
-    }
+    // Add caps for Administrator role
+    $role = get_role('administrator');
 
-    // Singular base for meta capabilities, plural base for primitive capabilities.
-    list( $singular_base, $plural_base ) = $args['capability_type'];
-
-    $default_capabilities = array(
-        // Meta capabilities
-        'edit_post'          => 'edit_'         . $singular_base,
-        'read_post'          => 'read_'         . $singular_base,
-        'delete_post'        => 'delete_'       . $singular_base,
-        // Primitive capabilities used outside of map_meta_cap():
-        'edit_posts'         => 'edit_'         . $plural_base,
-        'edit_others_posts'  => 'edit_others_'  . $plural_base,
-        'publish_posts'      => 'publish_'      . $plural_base,
-        'read_private_posts' => 'read_private_' . $plural_base,
+    $args = (object) array(
+        'capabilities' => array(),
+        'capability_type' => 'item',
+        'map_meta_cap' => null
     );
 
-    // Primitive capabilities used within map_meta_cap():
-    if ( isset( $args['map_meta_cap'] ) && $args['map_meta_cap'] ) {
-        $default_capabilities_for_mapping = array(
-            'read'                   => 'read',
-            'delete_posts'           => 'delete_'           . $plural_base,
-            'delete_private_posts'   => 'delete_private_'   . $plural_base,
-            'delete_published_posts' => 'delete_published_' . $plural_base,
-            'delete_others_posts'    => 'delete_others_'    . $plural_base,
-            'edit_private_posts'     => 'edit_private_'     . $plural_base,
-            'edit_published_posts'   => 'edit_published_'   . $plural_base,
-        );
+    $capabilities = ct_get_table_capabilities( $args );
 
-        $default_capabilities = array_merge( $default_capabilities, $default_capabilities_for_mapping );
+    foreach( $capabilities as $cap ) {
+        $role->add_cap( $cap );
     }
-
-    $capabilities = array_merge( $default_capabilities, isset( $args['capabilities'] ) ? $args['capabilities'] : array() );
-
-    // Post creation capability simply maps to edit_posts by default:
-    if ( ! isset( $capabilities['create_posts'] ) )
-        $capabilities['create_posts'] = $capabilities['edit_posts'];
-
-    return $capabilities;
 
 }
 
 /**
- * Build an object with all post type capabilities out of a post type object
+ * Build an object with all tables capabilities out of a table object
  *
  * Post type capabilities use the 'capability_type' argument as a base, if the
  * capability is not set in the 'capabilities' argument array or if the
@@ -155,18 +131,18 @@ function ct_get_object_capabilities( $name, $args = array() ) {
  *
  * By default, seven keys are accepted as part of the capabilities array:
  *
- * - edit_post, read_post, and delete_post are meta capabilities, which are then
+ * - edit_item, read_item, and delete_item are meta capabilities, which are then
  *   generally mapped to corresponding primitive capabilities depending on the
- *   context, which would be the post being edited/read/deleted and the user or
+ *   context, which would be the item being edited/read/deleted and the user or
  *   role being checked. Thus these capabilities would generally not be granted
  *   directly to users or roles.
  *
- * - edit_posts - Controls whether objects of this post type can be edited.
- * - edit_others_posts - Controls whether objects of this type owned by other users
- *   can be edited. If the post type does not support an author, then this will
- *   behave like edit_posts.
- * - publish_posts - Controls publishing objects of this post type.
- * - read_private_posts - Controls whether private objects can be read.
+ * - edit_items - Controls whether objects of this item type can be edited.
+ * - edit_others_items - Controls whether objects of this type owned by other users
+ *   can be edited. If the item type does not support an author, then this will
+ *   behave like edit_items.
+ * - publish_items - Controls publishing objects of this item type.
+ * - read_private_items - Controls whether private objects can be read.
  *
  * These four primitive capabilities are checked in core in various locations.
  * There are also seven other primitive capabilities which are not referenced
@@ -174,21 +150,21 @@ function ct_get_object_capabilities( $name, $args = array() ) {
  * meta capabilities and translates them into one or more primitive capabilities
  * that must then be checked against the user or role, depending on the context.
  *
- * - read - Controls whether objects of this post type can be read.
- * - delete_posts - Controls whether objects of this post type can be deleted.
- * - delete_private_posts - Controls whether private objects can be deleted.
- * - delete_published_posts - Controls whether published objects can be deleted.
- * - delete_others_posts - Controls whether objects owned by other users can be
- *   can be deleted. If the post type does not support an author, then this will
- *   behave like delete_posts.
- * - edit_private_posts - Controls whether private objects can be edited.
- * - edit_published_posts - Controls whether published objects can be edited.
+ * - read - Controls whether objects of this item type can be read.
+ * - delete_items - Controls whether objects of this item type can be deleted.
+ * - delete_private_items - Controls whether private objects can be deleted.
+ * - delete_published_items - Controls whether published objects can be deleted.
+ * - delete_others_items - Controls whether objects owned by other users can be
+ *   can be deleted. If the item type does not support an author, then this will
+ *   behave like delete_items.
+ * - edit_private_items - Controls whether private objects can be edited.
+ * - edit_published_items - Controls whether published objects can be edited.
  *
  * These additional capabilities are only used in map_meta_cap(). Thus, they are
- * only assigned by default if the post type is registered with the 'map_meta_cap'
+ * only assigned by default if the item type is registered with the 'map_meta_cap'
  * argument set to true (default is false).
  *
- * @since 3.0.0
+ * @since 1.0.0
  *
  * @see register_post_type()
  * @see map_meta_cap()
@@ -231,7 +207,7 @@ function ct_get_table_capabilities( $args ) {
 
     $capabilities = array_merge( $default_capabilities, $args->capabilities );
 
-    // Post creation capability simply maps to edit_posts by default:
+    // Post creation capability simply maps to edit_items by default:
     if ( ! isset( $capabilities['create_items'] ) )
         $capabilities['create_items'] = $capabilities['edit_items'];
 
@@ -243,7 +219,7 @@ function ct_get_table_capabilities( $args ) {
 }
 
 /**
- * Store or return a list of post type meta caps for map_meta_cap().
+ * Store or return a list of table meta caps for map_meta_cap().
  *
  * @since 1.0.0
  * @access private
@@ -256,7 +232,7 @@ function _ct_meta_capabilities( $capabilities = null ) {
     global $ct_meta_caps;
 
     foreach ( $capabilities as $core => $custom ) {
-        if ( in_array( $core, array( 'read_post', 'delete_post', 'edit_post' ) ) ) {
+        if ( in_array( $core, array( 'read_item', 'delete_item', 'edit_item' ) ) ) {
             $ct_meta_caps[ $custom ] = $core;
         }
     }
@@ -277,10 +253,10 @@ function _ct_meta_capabilities( $capabilities = null ) {
  */
 function ct_get_object( $object = null, $output = OBJECT, $filter = 'raw' ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     if ( is_object( $object ) ) {
-        $primary_key = $ct_object->db->primary_key;
+        $primary_key = $ct_table->db->primary_key;
 
         $object = ct_get_object_instance( $object->$primary_key );
     } else {
@@ -311,22 +287,22 @@ function ct_get_object( $object = null, $output = OBJECT, $filter = 'raw' ) {
  */
 function ct_get_object_instance( $object_id = null ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     $object_id = (int) $object_id;
     if ( ! $object_id ) {
         return false;
     }
 
-    $object = wp_cache_get( $object_id, $ct_object->name );
+    $object = wp_cache_get( $object_id, $ct_table->name );
 
     if ( ! $object ) {
-        $object = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$ct_object->db->table_name} WHERE {$ct_object->db->primary_key} = %d LIMIT 1", $object_id ) );
+        $object = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$ct_table->db->table_name} WHERE {$ct_table->db->primary_key} = %d LIMIT 1", $object_id ) );
 
         if ( ! $object )
             return false;
 
-        wp_cache_add( $object_id, $object, $ct_object->name );
+        wp_cache_add( $object_id, $object, $ct_table->name );
     }
 
     return $object;
@@ -347,7 +323,7 @@ function ct_get_object_instance( $object_id = null ) {
  * @param int|Object $object Post ID or post object to remove from the cache.
  */
 function ct_clean_object_cache( $object ) {
-    global $_wp_suspend_cache_invalidation, $ct_object;
+    global $_wp_suspend_cache_invalidation, $ct_table;
 
     if ( ! empty( $_wp_suspend_cache_invalidation ) )
         return;
@@ -356,9 +332,9 @@ function ct_clean_object_cache( $object ) {
     if ( empty( $object ) )
         return;
 
-    $primary_key = $ct_object->db->primary_key;
+    $primary_key = $ct_table->db->primary_key;
 
-    wp_cache_delete( $object->$primary_key, $ct_object->name );
+    wp_cache_delete( $object->$primary_key, $ct_table->name );
 
     //wp_cache_delete( 'wp_get_archives', 'general' );
 
@@ -372,7 +348,7 @@ function ct_clean_object_cache( $object ) {
      */
     do_action( 'ct_clean_object_cache', $object->$primary_key, $object );
 
-    wp_cache_set( 'last_changed', microtime(), $ct_object->name );
+    wp_cache_set( 'last_changed', microtime(), $ct_table->name );
 }
 
 /**
@@ -389,7 +365,7 @@ function ct_clean_object_cache( $object ) {
  */
 function ct_update_object( $object_data = array(), $wp_error = false ) {
 
-    global $ct_object;
+    global $ct_table;
 
     if ( is_object( $object_data ) ) {
         // Non-escaped post was passed.
@@ -397,7 +373,7 @@ function ct_update_object( $object_data = array(), $wp_error = false ) {
         $object_data = wp_slash( $object_data );
     }
 
-    $primary_key = $ct_object->db->primary_key;
+    $primary_key = $ct_table->db->primary_key;
 
     // First, get all of the original fields.
     $object = ct_get_object( $object_data[$primary_key], ARRAY_A );
@@ -424,7 +400,7 @@ function ct_update_object( $object_data = array(), $wp_error = false ) {
  * @since 1.0.0
  *
  * @global wpdb $wpdb WordPress database abstraction object.
- * @global CT_Table $ct_object Custom Tables CT_Table object type.
+ * @global CT_Table $ct_table Custom Tables CT_Table object type.
  *
  * @param array $object_data An array of elements that make up a post to update or insert.
  * @param bool  $wp_error Optional. Whether to return a WP_Error on failure. Default false.
@@ -433,7 +409,7 @@ function ct_update_object( $object_data = array(), $wp_error = false ) {
  */
 function ct_insert_object( $object_data, $wp_error = false ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     /**
      * Setup the default object for the add new view.
@@ -444,7 +420,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
      *
      * @param array $default_data Default data to be filtered.
      */
-    $defaults = apply_filters( "ct_{$ct_object->name}_default_data", array() );
+    $defaults = apply_filters( "ct_{$ct_table->name}_default_data", array() );
 
     $object_data = wp_parse_args( $object_data, $defaults );
 
@@ -452,7 +428,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
     $object_id = 0;
     $original_object_data = array();
     $update = false;
-    $primary_key = $ct_object->db->primary_key;
+    $primary_key = $ct_table->db->primary_key;
 
     if ( ! empty( $object_data[$primary_key] ) ) {
         $update = true;
@@ -498,7 +474,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
          */
         do_action( 'pre_object_update', $object_id, $object_data );
 
-        if ( false === $ct_object->db->update( $object_data, $where ) ) {
+        if ( false === $ct_table->db->update( $object_data, $where ) ) {
             if ( $wp_error ) {
                 return new WP_Error('db_update_error', __('Could not update object in the database'), $wpdb->last_error);
             } else {
@@ -513,12 +489,12 @@ function ct_insert_object( $object_data, $wp_error = false ) {
         if ( ! empty( $import_id ) ) {
 
             $import_id = (int) $import_id;
-            if ( ! $wpdb->get_var( $wpdb->prepare("SELECT {$primary_key} FROM {$ct_object->db->table_name} WHERE {$primary_key} = %d", $import_id) ) ) {
+            if ( ! $wpdb->get_var( $wpdb->prepare("SELECT {$primary_key} FROM {$ct_table->db->table_name} WHERE {$primary_key} = %d", $import_id) ) ) {
                 $object_data[$primary_key] = $import_id;
             }
         }
 
-        if ( false === $wpdb->insert( $ct_object->db->table_name, $object_data ) ) {
+        if ( false === $wpdb->insert( $ct_table->db->table_name, $object_data ) ) {
 
             if ( $wp_error ) {
                 return new WP_Error('db_insert_error', __('Could not insert object into the database'), $wpdb->last_error);
@@ -532,7 +508,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
     }
 
     // If isset meta_input and object supports meta, then add meta data
-    if ( ! empty( $object_data['meta_input'] ) && $ct_object->meta ) {
+    if ( ! empty( $object_data['meta_input'] ) && $ct_table->meta ) {
         foreach ( $object_data['meta_input'] as $field => $value ) {
             ct_update_object_meta( $object_id, $field, $value );
         }
@@ -570,7 +546,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
     /**
      * Fires once a object has been saved.
      *
-     * The dynamic portion of the hook name, `{$ct_object->name}`, refers to the object type.
+     * The dynamic portion of the hook name, `{$ct_table->name}`, refers to the object type.
      *
      * @since 3.7.0
      *
@@ -578,7 +554,7 @@ function ct_insert_object( $object_data, $wp_error = false ) {
      * @param WP_Post $object       Object object.
      * @param bool    $update       Whether this is an existing object being updated or not.
      */
-    do_action( "ct_save_object_{$ct_object->name}", $object_id, $object, $update );
+    do_action( "ct_save_object_{$ct_table->name}", $object_id, $object, $update );
 
     /**
      * Fires once a post has been saved.
@@ -624,10 +600,10 @@ function ct_insert_object( $object_data, $wp_error = false ) {
  */
 function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     // Bail if CT_Table not supports meta data
-    if( ! $ct_object->meta ) {
+    if( ! $ct_table->meta ) {
         return false;
     }
 
@@ -636,14 +612,14 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
         return false;
     }
 
-    $primary_key = $ct_object->db->primary_key;
-    $meta_primary_key = $ct_object->meta->db->primary_key;
-    $meta_table_name = $ct_object->meta->db->table_name;
+    $primary_key = $ct_table->db->primary_key;
+    $meta_primary_key = $ct_table->meta->db->primary_key;
+    $meta_table_name = $ct_table->meta->db->table_name;
 
     // expected_slashed ($meta_key)
     $meta_key = wp_unslash($meta_key);
     $meta_value = wp_unslash($meta_value);
-    $meta_value = sanitize_meta( $meta_key, $meta_value, $ct_object->name );
+    $meta_value = sanitize_meta( $meta_key, $meta_value, $ct_table->name );
 
     /**
      * Filters whether to add metadata of a specific type.
@@ -661,7 +637,7 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
      * @param bool      $unique     Whether the specified meta key should be unique
      *                              for the object. Optional. Default false.
      */
-    $check = apply_filters( "add_{$ct_object->name}_metadata", null, $object_id, $meta_key, $meta_value, $unique );
+    $check = apply_filters( "add_{$ct_table->name}_metadata", null, $object_id, $meta_key, $meta_value, $unique );
     if ( null !== $check )
         return $check;
 
@@ -685,7 +661,7 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
      * @param string $meta_key   Meta key.
      * @param mixed  $meta_value Meta value.
      */
-    do_action( "add_{$ct_object->name}_meta", $object_id, $meta_key, $_meta_value );
+    do_action( "add_{$ct_table->name}_meta", $object_id, $meta_key, $_meta_value );
 
     $result = $wpdb->insert( $meta_table_name, array(
         $primary_key => $object_id,
@@ -698,7 +674,7 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
 
     $mid = (int) $wpdb->insert_id;
 
-    wp_cache_delete( $object_id, $ct_object->meta->name );
+    wp_cache_delete( $object_id, $ct_table->meta->name );
 
     /**
      * Fires immediately after meta of a specific type is added.
@@ -713,7 +689,7 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
      * @param string $meta_key   Meta key.
      * @param mixed  $meta_value Meta value.
      */
-    do_action( "added_{$ct_object->name}_meta", $mid, $object_id, $meta_key, $_meta_value );
+    do_action( "added_{$ct_table->name}_meta", $mid, $object_id, $meta_key, $_meta_value );
 
     return $mid;
 }
@@ -735,10 +711,10 @@ function ct_add_object_meta( $object_id, $meta_key, $meta_value, $unique = false
  */
 function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     // Bail if CT_Table not supports meta data
-    if( ! $ct_object->meta ) {
+    if( ! $ct_table->meta ) {
         return false;
     }
 
@@ -747,9 +723,9 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
         return false;
     }
 
-    $primary_key = $ct_object->db->primary_key;
-    $meta_primary_key = $ct_object->meta->db->primary_key;
-    $meta_table_name = $ct_object->meta->db->table_name;
+    $primary_key = $ct_table->db->primary_key;
+    $meta_primary_key = $ct_table->meta->db->primary_key;
+    $meta_table_name = $ct_table->meta->db->table_name;
 
     // expected_slashed ($meta_key)
     $meta_key = wp_unslash($meta_key);
@@ -773,7 +749,7 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
      *                              for all objects, ignoring the specified $object_id.
      *                              Default false.
      */
-    $check = apply_filters( "delete_{$ct_object->name}_metadata", null, $object_id, $meta_key, $meta_value, $delete_all );
+    $check = apply_filters( "delete_{$ct_table->name}_metadata", null, $object_id, $meta_key, $meta_value, $delete_all );
     if ( null !== $check )
         return (bool) $check;
 
@@ -814,7 +790,7 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
      * @param string $meta_key   Meta key.
      * @param mixed  $meta_value Meta value.
      */
-    do_action( "delete_{$ct_object->name}_meta", $meta_ids, $object_id, $meta_key, $_meta_value );
+    do_action( "delete_{$ct_table->name}_meta", $meta_ids, $object_id, $meta_key, $_meta_value );
 
     $query = "DELETE FROM $meta_table_name WHERE $meta_primary_key IN( " . implode( ',', $meta_ids ) . " )";
 
@@ -825,10 +801,10 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
 
     if ( $delete_all ) {
         foreach ( (array) $object_ids as $o_id ) {
-            wp_cache_delete( $o_id, $ct_object->meta->name );
+            wp_cache_delete( $o_id, $ct_table->meta->name );
         }
     } else {
-        wp_cache_delete( $object_id, $ct_object->meta->name );
+        wp_cache_delete( $object_id, $ct_table->meta->name );
     }
 
     /**
@@ -844,7 +820,7 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
      * @param string $meta_key   Meta key.
      * @param mixed  $meta_value Meta value.
      */
-    do_action( "deleted_{$ct_object->name}_meta", $meta_ids, $object_id, $meta_key, $_meta_value );
+    do_action( "deleted_{$ct_table->name}_meta", $meta_ids, $object_id, $meta_key, $_meta_value );
 
     return true;
 }
@@ -863,10 +839,10 @@ function ct_delete_object_meta( $object_id, $meta_key, $meta_value = '' ) {
  */
 function ct_get_object_meta( $object_id, $meta_key = '', $single = false ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     // Bail if CT_Table not supports meta data
-    if( ! $ct_object->meta ) {
+    if( ! $ct_table->meta ) {
         return false;
     }
 
@@ -890,7 +866,7 @@ function ct_get_object_meta( $object_id, $meta_key = '', $single = false ) {
      * @param string            $meta_key  Meta key.
      * @param bool              $single    Whether to return only the first value of the specified $meta_key.
      */
-    $check = apply_filters( "get_{$ct_object->name}_metadata", null, $object_id, $meta_key, $single );
+    $check = apply_filters( "get_{$ct_table->name}_metadata", null, $object_id, $meta_key, $single );
     if ( null !== $check ) {
         if ( $single && is_array( $check ) )
             return $check[0];
@@ -898,10 +874,10 @@ function ct_get_object_meta( $object_id, $meta_key = '', $single = false ) {
             return $check;
     }
 
-    $meta_cache = wp_cache_get( $object_id, $ct_object->meta->name );
+    $meta_cache = wp_cache_get( $object_id, $ct_table->meta->name );
 
     if ( !$meta_cache ) {
-        $meta_cache = update_meta_cache( $ct_object->meta->name, array( $object_id ) );
+        $meta_cache = update_meta_cache( $ct_table->meta->name, array( $object_id ) );
         $meta_cache = $meta_cache[$object_id];
     }
 
@@ -942,10 +918,10 @@ function ct_get_object_meta( $object_id, $meta_key = '', $single = false ) {
  */
 function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value = '' ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
     // Bail if CT_Table not supports meta data
-    if( ! $ct_object->meta ) {
+    if( ! $ct_table->meta ) {
         return false;
     }
 
@@ -954,9 +930,9 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
         return false;
     }
 
-    $primary_key = $ct_object->db->primary_key;
-    $meta_primary_key = $ct_object->meta->db->primary_key;
-    $meta_table_name = $ct_object->meta->db->table_name;
+    $primary_key = $ct_table->db->primary_key;
+    $meta_primary_key = $ct_table->meta->db->primary_key;
+    $meta_table_name = $ct_table->meta->db->table_name;
 
     // Keep original values
     $raw_meta_key = $meta_key;
@@ -965,12 +941,12 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
     // Sanitize vars
     $meta_key = wp_unslash( $meta_key );
     $meta_value = wp_unslash( $meta_value );
-    $meta_value = sanitize_meta( $meta_key, $meta_value, $ct_object->name );
+    $meta_value = sanitize_meta( $meta_key, $meta_value, $ct_table->name );
 
     /**
      * Filters whether to update metadata of a specific type.
      *
-     * The dynamic portion of the hook, `$ct_object->name`, refers to the meta object type.
+     * The dynamic portion of the hook, `$ct_table->name`, refers to the meta object type.
      * Returning a non-null value will effectively short-circuit the function.
      *
      * @since 1.0.0
@@ -983,7 +959,7 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
      *                              metadata entries with the specified value.
      *                              Otherwise, update all entries.
      */
-    $check = apply_filters( "update_{$ct_object->name}_metadata", null, $object_id, $meta_key, $meta_value, $prev_value );
+    $check = apply_filters( "update_{$ct_table->name}_metadata", null, $object_id, $meta_key, $meta_value, $prev_value );
     if ( null !== $check )
         return (bool) $check;
 
@@ -1029,15 +1005,15 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
          * @param string $meta_key   Meta key.
          * @param mixed  $meta_value Meta value.
          */
-        do_action( "update_{$ct_object->name}_meta", $meta_id, $object_id, $meta_key, $_meta_value );
+        do_action( "update_{$ct_table->name}_meta", $meta_id, $object_id, $meta_key, $_meta_value );
     }
 
-    $result = $ct_object->meta->db->update( $data, $where );
+    $result = $ct_table->meta->db->update( $data, $where );
 
     if ( ! $result )
         return false;
 
-    wp_cache_delete( $object_id, $ct_object->meta->name );
+    wp_cache_delete( $object_id, $ct_table->meta->name );
 
     foreach ( $meta_ids as $meta_id ) {
         /**
@@ -1053,7 +1029,7 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
          * @param string $meta_key   Meta key.
          * @param mixed  $meta_value Meta value.
          */
-        do_action( "updated_{$ct_object->name}_meta", $meta_id, $object_id, $meta_key, $_meta_value );
+        do_action( "updated_{$ct_table->name}_meta", $meta_id, $object_id, $meta_key, $_meta_value );
     }
 
     return true;
@@ -1071,11 +1047,11 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
  */
 function ct_has_meta( $object_id ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
-    $primary_key = $ct_object->db->primary_key;
-    $meta_primary_key = $ct_object->meta->db->primary_key;
-    $meta_table_name = $ct_object->meta->db->table_name;
+    $primary_key = $ct_table->db->primary_key;
+    $meta_primary_key = $ct_table->meta->db->primary_key;
+    $meta_table_name = $ct_table->meta->db->table_name;
 
     return $wpdb->get_results( $wpdb->prepare(
         "SELECT meta_key, meta_value, meta_id, {$primary_key}
@@ -1095,9 +1071,9 @@ function ct_has_meta( $object_id ) {
  */
 function ct_meta_form( $object = null ) {
 
-    global $wpdb, $ct_object;
+    global $wpdb, $ct_table;
 
-    $primary_key = $ct_object->db->primary_key;
+    $primary_key = $ct_table->db->primary_key;
     $object = ct_get_object( $object );
 
     /**
@@ -1111,7 +1087,7 @@ function ct_meta_form( $object = null ) {
      * @param array|null $keys Pre-defined meta keys to be used in place of a postmeta query. Default null.
      * @param stdClass    $object The current object.
      */
-    $keys = apply_filters( "{$ct_object->name}_meta_form_keys", null, $object );
+    $keys = apply_filters( "{$ct_table->name}_meta_form_keys", null, $object );
 
     if ( null === $keys ) {
         /**
@@ -1122,9 +1098,9 @@ function ct_meta_form( $object = null ) {
          *
          * @param int $limit Number of custom fields to retrieve. Default 30.
          */
-        $limit = apply_filters( "{$ct_object->name}_meta_form_limit", 30 );
+        $limit = apply_filters( "{$ct_table->name}_meta_form_limit", 30 );
         $sql = "SELECT DISTINCT meta_key
-			FROM {$ct_object->meta->db->table_name}
+			FROM {$ct_table->meta->db->table_name}
 			WHERE meta_key NOT BETWEEN '_' AND '_z'
 			HAVING meta_key NOT LIKE %s
 			ORDER BY meta_key
@@ -1197,17 +1173,17 @@ function ct_meta_form( $object = null ) {
  * @return string $url
  */
 function ct_get_list_link( $name ) {
-    global $ct_tables;
+    global $ct_registered_tables;
 
-    if( ! isset( $ct_tables[$name] ) ) {
+    if( ! isset( $ct_registered_tables[$name] ) ) {
         return '';
     }
 
-    if( ! isset( $ct_tables[$name]->views->list ) ) {
+    if( ! isset( $ct_registered_tables[$name]->views->list ) ) {
         return '';
     }
 
-    return $ct_tables[$name]->views->list->get_link();
+    return $ct_registered_tables[$name]->views->list->get_link();
 }
 
 /**
@@ -1219,17 +1195,17 @@ function ct_get_list_link( $name ) {
  * @return string
  */
 function ct_get_edit_link( $name, $object_id = 0 ) {
-    global $ct_tables;
+    global $ct_registered_tables;
 
-    if( ! isset( $ct_tables[$name] ) || $object_id === 0 ) {
+    if( ! isset( $ct_registered_tables[$name] ) || $object_id === 0 ) {
         return '';
     }
 
-    if( ! isset( $ct_tables[$name]->views->edit ) ) {
+    if( ! isset( $ct_registered_tables[$name]->views->edit ) ) {
         return '';
     }
 
-    $primary_key = $ct_tables[$name]->db->primary_key;
+    $primary_key = $ct_registered_tables[$name]->db->primary_key;
 
-    return add_query_arg( array( $primary_key => $object_id ), $ct_tables[$name]->views->edit->get_link() );
+    return add_query_arg( array( $primary_key => $object_id ), $ct_registered_tables[$name]->views->edit->get_link() );
 }

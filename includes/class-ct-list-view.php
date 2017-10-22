@@ -41,11 +41,11 @@ if ( ! class_exists( 'CT_List_View' ) ) :
          */
         public function render_list_table_columns_preferences() {
 
-            global $ct_object;
+            global $ct_table;
 
             // Set up vars
-            $columns = apply_filters( "manage_{$ct_object->name}_columns", array() );
-            $hidden  = get_hidden_columns( $ct_object->name );
+            $columns = apply_filters( "manage_{$ct_table->name}_columns", array() );
+            $hidden  = get_hidden_columns( $ct_table->name );
 
             if ( ! $columns ) {
                 return;
@@ -85,7 +85,7 @@ if ( ! class_exists( 'CT_List_View' ) ) :
          */
         public function render_per_page_options() {
 
-            global $ct_object;
+            global $ct_table;
 
             if ( ! $this->per_page ) {
                 return;
@@ -94,7 +94,7 @@ if ( ! class_exists( 'CT_List_View' ) ) :
             // Set up vars
             $per_page_label = __( 'Number of items per page:' );
 
-            $option = str_replace( '-', '_', "{$ct_object->name}_per_page" );
+            $option = str_replace( '-', '_', "{$ct_table->name}_per_page" );
 
             $per_page = (int) get_user_option( $option );
 
@@ -123,19 +123,19 @@ if ( ! class_exists( 'CT_List_View' ) ) :
 
         public function render() {
 
-            global $ct_tables, $ct_object, $ct_query, $ct_list_table;
+            global $ct_registered_tables, $ct_table, $ct_query, $ct_list_table;
 
-            if( ! isset( $ct_tables[$this->name] ) ) {
+            if( ! isset( $ct_registered_tables[$this->name] ) ) {
                 return;
             }
 
             // Set up vars
-            $ct_object = $ct_tables[$this->name];
+            $ct_table = $ct_registered_tables[$this->name];
             $ct_query = new CT_Query( $_GET );
             $ct_list_table = new CT_List_Table();
 
             // Setup screen options
-            //add_screen_option( 'per_page', array( 'default' => 20, 'option' => 'edit_' . $ct_object->name . '_per_page' ) );
+            //add_screen_option( 'per_page', array( 'default' => 20, 'option' => 'edit_' . $ct_table->name . '_per_page' ) );
 
             $ct_list_table->prepare_items();
 
@@ -143,7 +143,7 @@ if ( ! class_exists( 'CT_List_View' ) ) :
 
             <div class="wrap">
 
-                <h1 class="wp-heading-inline"><?php echo $ct_object->labels->plural_name; ?></h1>
+                <h1 class="wp-heading-inline"><?php echo $ct_table->labels->plural_name; ?></h1>
 
                 <?php $ct_list_table->views(); ?>
 
@@ -151,7 +151,7 @@ if ( ! class_exists( 'CT_List_View' ) ) :
 
                     <input type="hidden" name="page" value="<?php echo esc_attr( $this->args['menu_slug'] ); ?>" />
 
-                    <?php $ct_list_table->search_box( $ct_object->labels->search_items, $ct_object->name ); ?>
+                    <?php $ct_list_table->search_box( $ct_table->labels->search_items, $ct_table->name ); ?>
 
                     <?php $ct_list_table->display(); ?>
 

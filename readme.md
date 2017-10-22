@@ -14,7 +14,8 @@ Custom table registration:
 - [x] Schema parser
 - [ ] Migration process
 - [x] Ability to show or hide from menu
-- [ ] Capabilities
+- [x] Capabilities for Administrators
+- [ ] Find a way to add easy capability options
 - [x] Ability to easily add meta data functionality
 - [ ] WP rest API support
 - [ ] Frontend support

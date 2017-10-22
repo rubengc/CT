@@ -435,7 +435,7 @@ if ( ! class_exists( 'CT_Table' ) ) :
                 'show_in_admin_bar'     => null,
                 'menu_position'         => null,
                 'menu_icon'             => null,
-                'capability_type'       => 'post',
+                'capability_type'       => 'item',
                 'capabilities'          => array(),
                 'map_meta_cap'          => null,
                 'supports'              => array(),
@@ -503,6 +503,7 @@ if ( ! class_exists( 'CT_Table' ) ) :
             }
 
             $this->cap = ct_get_table_capabilities( (object) $args );
+
             unset( $args['capabilities'] );
 
             if ( is_array( $args['capability_type'] ) ) {
@@ -548,7 +549,16 @@ if ( ! class_exists( 'CT_Table' ) ) :
 
             $this->singular  = $args['singular'];
             $this->plural  = $args['plural'];
-            $this->labels = ct_get_table_labels( $this );
+
+            $labels = (array) ct_get_table_labels( $this );
+
+            // Custom defined labels overrides default
+            if( isset( $args['labels'] ) && is_array( $args['labels'] ) ) {
+                $labels = wp_parse_args( $args['labels'], $labels );
+            }
+
+            $this->labels = (object) $labels;
+
             $this->label  = $this->labels->name;
 
             // Table database

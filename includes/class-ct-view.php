@@ -43,7 +43,7 @@ if ( ! class_exists( 'CT_View' ) ) :
         public function add_hooks() {
 
             // Note: sub-menus need to be registered after parent
-            add_action( 'admin_menu', array( $this, 'admin_menu' ), empty( $this->args['parent_slug'] ) ? 10 : 15 );
+            add_action( 'admin_menu', array( $this, 'admin_menu' ), empty( $this->args['parent_slug'] ) ? 10 : 11 );
 
             add_filter( 'screen_options_show_screen', array( $this, 'show_screen_options' ), 10, 2 );
 
@@ -79,14 +79,14 @@ if ( ! class_exists( 'CT_View' ) ) :
 
             if( isset( $screen_slug[1] ) &&  $screen_slug[1] === $this->args['menu_slug'] ) {
 
-                global $ct_tables, $ct_object;
+                global $ct_registered_tables, $ct_table;
 
-                if( ! isset( $ct_tables[$this->name] ) ) {
+                if( ! isset( $ct_registered_tables[$this->name] ) ) {
                     return $screen_settings;
                 }
 
                 // Set up global vars
-                $ct_object = $ct_tables[$this->name];
+                $ct_table = $ct_registered_tables[$this->name];
 
                 ob_start();
                 $this->screen_settings( $screen_settings, $screen );

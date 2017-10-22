@@ -156,7 +156,16 @@ if ( ! class_exists( 'CT_DataBase_Schema' ) ) :
 
                 // DEFAULT definition
                 if( $field_args['default'] !== false ) {
-                    $schema .= 'DEFAULT ' . ( $field_args['default'] === null ? 'NULL' : $field_args['default'] ) . ' ';
+
+                    if( gettype( $field_args['default'] ) === 'string' ) {
+                        $field_args['default'] = "'" . $field_args['default'] . "'";
+                    }
+
+                    if( $field_args['default'] === null ) {
+                        $field_args['default'] = 'NULL';
+                    }
+
+                    $schema .= 'DEFAULT ' . $field_args['default'] . ' ';
                 }
 
                 // UNIQUE definition

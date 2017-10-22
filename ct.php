@@ -3,6 +3,10 @@
  * Custom Tables main class
  *
  * @since 1.0.0
+ *
+ * @package      Custom_Tables
+ * @author       Tsunoa <contact@tsunoa.com>, rubengc <rubengcdev@gamil.com>
+ * @copyright    Copyright (c) Tsunoa
  */
 // Exit if accessed directly
 defined( 'ABSPATH' ) || exit;
@@ -108,6 +112,9 @@ if ( ! class_exists( 'CT' ) ) :
         }
 
         public function init() {
+
+            // Setup role caps for CT capabilities
+            ct_populate_roles();
 
             // Trigger CT init hook
             do_action( 'ct_init' );

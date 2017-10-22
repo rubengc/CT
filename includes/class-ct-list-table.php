@@ -23,12 +23,12 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          *                    the list table. Default empty array.
          */
         public function __construct( $args = array() ) {
-            global $ct_object, $ct_query;
+            global $ct_table, $ct_query;
 
             parent::__construct( array(
-                'singular' => $ct_object->labels->singular_name,
-                'plural' => $ct_object->labels->plural_name,
-                'screen' => convert_to_screen( $ct_object->labels->plural_name )
+                'singular' => $ct_table->labels->singular_name,
+                'plural' => $ct_table->labels->plural_name,
+                'screen' => convert_to_screen( $ct_table->labels->plural_name )
             ) );
         }
 
@@ -105,9 +105,9 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @return array
          */
         protected function get_table_classes() {
-            global $ct_object;
+            global $ct_table;
 
-            return array( 'widefat', 'fixed', 'striped', $ct_object->name );
+            return array( 'widefat', 'fixed', 'striped', $ct_table->name );
         }
 
         /**
@@ -118,7 +118,7 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @return array $columns Array of all the list table columns
          */
         public function get_columns() {
-            global $ct_object;
+            global $ct_table;
 
             $columns = array();
 
@@ -134,7 +134,7 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
              * @param array  $posts_columns An array of column names.
              * @param string $post_type     The post type slug.
              */
-            return apply_filters( "manage_{$ct_object->name}_columns", $columns );
+            return apply_filters( "manage_{$ct_table->name}_columns", $columns );
         }
 
         /**
@@ -145,7 +145,7 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @return array Array of all the sortable columns
          */
         public function get_sortable_columns() {
-            global $ct_object;
+            global $ct_table;
 
             $sortable_columns = array();
 
@@ -157,7 +157,7 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
              * @param array  $posts_columns An array of column names.
              * @param string $post_type     The post type slug.
              */
-            return apply_filters( "manage_{$ct_object->name}_sortable_columns", $sortable_columns );
+            return apply_filters( "manage_{$ct_table->name}_sortable_columns", $sortable_columns );
         }
 
         /**
@@ -171,11 +171,11 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @return string                   The column value.
          */
         public function column_default( $item, $column_name ) {
-            global $ct_object;
+            global $ct_table;
 
             $value = isset( $item->$column_name ) ? $item->$column_name : '';
 
-            $primary_key = $ct_object->db->primary_key;
+            $primary_key = $ct_table->db->primary_key;
 
             /**
              * Fires for each custom column of a specific post type in the Posts list table.
@@ -187,17 +187,23 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
              * @param string $column_name The name of the column to display.
              * @param int    $post_id     The current post ID.
              */
-            do_action( "manage_{$ct_object->name}_custom_column", $column_name, $item->$primary_key );
+            ob_start();
+            do_action( "manage_{$ct_table->name}_custom_column", $column_name, $item->$primary_key );
+            $custom_output = ob_get_clean();
+
+            if( ! empty( $custom_output ) ) {
+                return $custom_output;
+            }
 
             $first_column_index = ( ! empty( $this->get_bulk_actions() ) ) ? 1 : 0;
 
-            $can_edit_item = current_user_can( $ct_object->cap->edit_item, $item->$primary_key );
+            $can_edit_item = current_user_can( $ct_table->cap->edit_item, $item->$primary_key );
 
             if( $column_name === array_keys( $this->get_columns() )[$first_column_index] && $can_edit_item ) {
 
                 // Turns first column into a text link with url to edit the item
                 $value = sprintf( '<a href="%s" aria-label="%s">%s</a>',
-                    ct_get_edit_link( $ct_object->name, $item->$primary_key ),
+                    ct_get_edit_link( $ct_table->name, $item->$primary_key ),
                     esc_attr( sprintf( __( 'Edit &#8220;%s&#8221;' ), $value ) ),
                     $value
                 );
@@ -224,23 +230,23 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
                 return '';
             }
 
-            global $ct_object;
+            global $ct_table;
 
-            $primary_key = $ct_object->db->primary_key;
-            $can_edit_item = current_user_can( $ct_object->cap->edit_item, $item->$primary_key );
+            $primary_key = $ct_table->db->primary_key;
+            $can_edit_item = current_user_can( $ct_table->cap->edit_item, $item->$primary_key );
             $actions = array();
 
             // TODO: add custom map_meta_cap()
             //$current_user = wp_get_current_user();
 
-            //$current_user->has_cap( $ct_object->cap->edit_item, $item->$primary_key );
+            //$current_user->has_cap( $ct_table->cap->edit_item, $item->$primary_key );
 
             //map_meta_cap();
 
-            if ( $ct_object->views->edit && $can_edit_item ) {
+            if ( $ct_table->views->edit && $can_edit_item ) {
                 $actions['edit'] = sprintf(
                     '<a href="%s" aria-label="%s">%s</a>',
-                    ct_get_edit_link( $ct_object->name, $item->$primary_key ),
+                    ct_get_edit_link( $ct_table->name, $item->$primary_key ),
                     esc_attr( __( 'Edit' ) ),
                     __( 'Edit' )
                 );
@@ -258,7 +264,7 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
              *                         'Delete Permanently', 'Preview', and 'View'.
              * @param WP_Post $post The post object.
              */
-            $actions = apply_filters( "{$ct_object->name}_row_actions", $actions, $item );
+            $actions = apply_filters( "{$ct_table->name}_row_actions", $actions, $item );
 
             return $this->row_actions( $actions );
         }
@@ -271,11 +277,11 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @param WP_Post $item The current WP_Post object.
          */
         public function column_cb( $item ) {
-            global $ct_object;
+            global $ct_table;
 
-            $primary_key = $ct_object->db->primary_key;
+            $primary_key = $ct_table->db->primary_key;
 
-            if ( current_user_can( 'edit_posts' ) ): ?>
+            if ( current_user_can( $ct_table->cap->edit_items ) ): ?>
                 <label class="screen-reader-text" for="cb-select-<?php echo $item->$primary_key; ?>"><?php
                     printf( __( 'Select %s' ), _draft_or_post_title() );
                     ?></label>
@@ -299,18 +305,19 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
          * @since  1.0.0
          */
         function no_items() {
-            global $ct_object;
+            global $ct_table;
 
-            echo $ct_object->labels->not_found;
+            echo $ct_table->labels->not_found;
         }
 
         public function prepare_items() {
-            global $ct_object, $ct_query;
+
+            global $ct_table, $ct_query;
 
             $this->items = $ct_query->get_results();
 
             $total_items = $ct_query->found_results;
-            $per_page = $this->get_items_per_page( 'edit_' . $ct_object->name . '_per_page' );
+            $per_page = $this->get_items_per_page( 'edit_' . $ct_table->name . '_per_page' );
 
             $this->set_pagination_args( array(
                 'total_items' => $total_items,
