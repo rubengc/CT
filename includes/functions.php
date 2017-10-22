@@ -877,7 +877,7 @@ function ct_get_object_meta( $object_id, $meta_key = '', $single = false ) {
     $meta_cache = wp_cache_get( $object_id, $ct_table->meta->name );
 
     if ( !$meta_cache ) {
-        $meta_cache = update_meta_cache( $ct_table->meta->name, array( $object_id ) );
+        $meta_cache = ct_update_meta_cache( $ct_table->meta->name, array( $object_id ) );
         $meta_cache = $meta_cache[$object_id];
     }
 
@@ -1033,6 +1033,89 @@ function ct_update_object_meta( $object_id, $meta_key, $meta_value, $prev_value 
     }
 
     return true;
+}
+
+/**
+ * Update the metadata cache for the specified objects.
+ *
+ * @since 2.9.0
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
+ *
+ * @param string    $meta_type  Type of object metadata is for (e.g., comment, post, or user)
+ * @param int|array $object_ids Array or comma delimited list of object IDs to update cache for
+ * @return array|false Metadata cache for the specified objects, or false on failure.
+ */
+function ct_update_meta_cache($meta_type, $object_ids) {
+
+    global $wpdb, $ct_table;
+
+    if ( ! $meta_type || ! $object_ids ) {
+        return false;
+    }
+
+    // Bail if CT_Table not supports meta data
+    if( ! $ct_table->meta ) {
+        return false;
+    }
+
+    // Setup vars
+    $primary_key = $ct_table->db->primary_key;
+    $meta_primary_key = $ct_table->meta->db->primary_key;
+    $meta_table_name = $ct_table->meta->db->table_name;
+
+    $column = sanitize_key($meta_type . '_id');
+
+    if ( !is_array($object_ids) ) {
+        $object_ids = preg_replace('|[^0-9,]|', '', $object_ids);
+        $object_ids = explode(',', $object_ids);
+    }
+
+    $object_ids = array_map('intval', $object_ids);
+
+    $cache_key = $meta_table_name;
+    $ids = array();
+    $cache = array();
+    foreach ( $object_ids as $id ) {
+        $cached_object = wp_cache_get( $id, $cache_key );
+        if ( false === $cached_object )
+            $ids[] = $id;
+        else
+            $cache[$id] = $cached_object;
+    }
+
+    if ( empty( $ids ) )
+        return $cache;
+
+    // Get meta info
+    $id_list = join( ',', $ids );
+
+    $meta_list = $wpdb->get_results( "SELECT {$primary_key}, meta_key, meta_value FROM {$meta_table_name} WHERE {$primary_key} IN ($id_list) ORDER BY {$meta_primary_key} ASC", ARRAY_A );
+
+    if ( !empty($meta_list) ) {
+        foreach ( $meta_list as $metarow) {
+            $mpid = intval($metarow[$primary_key]);
+            $mkey = $metarow['meta_key'];
+            $mval = $metarow['meta_value'];
+
+            // Force subkeys to be array type:
+            if ( !isset($cache[$mpid]) || !is_array($cache[$mpid]) )
+                $cache[$mpid] = array();
+            if ( !isset($cache[$mpid][$mkey]) || !is_array($cache[$mpid][$mkey]) )
+                $cache[$mpid][$mkey] = array();
+
+            // Add a value to the current pid/key:
+            $cache[$mpid][$mkey][] = $mval;
+        }
+    }
+
+    foreach ( $ids as $id ) {
+        if ( ! isset($cache[$id]) )
+            $cache[$id] = array();
+        wp_cache_add( $id, $cache[$id], $cache_key );
+    }
+
+    return $cache;
 }
 
 /**

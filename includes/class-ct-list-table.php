@@ -121,8 +121,9 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
             global $ct_table;
 
             $columns = array();
+            $bulk_actions = $this->get_bulk_actions();
 
-            if( ! empty( $this->get_bulk_actions() ) ) {
+            if( ! empty( $bulk_actions ) ) {
                 $columns['cb'] = '<input type="checkbox" />';
             }
 
@@ -195,11 +196,15 @@ if ( ! class_exists( 'CT_List_Table' ) ) :
                 return $custom_output;
             }
 
-            $first_column_index = ( ! empty( $this->get_bulk_actions() ) ) ? 1 : 0;
+            $bulk_actions = $this->get_bulk_actions();
+
+            $first_column_index = ( ! empty( $bulk_actions ) ) ? 1 : 0;
 
             $can_edit_item = current_user_can( $ct_table->cap->edit_item, $item->$primary_key );
+            $columns = $this->get_columns();
+            $columns_keys = array_keys( $columns );
 
-            if( $column_name === array_keys( $this->get_columns() )[$first_column_index] && $can_edit_item ) {
+            if( $column_name === $columns_keys[$first_column_index] && $can_edit_item ) {
 
                 // Turns first column into a text link with url to edit the item
                 $value = sprintf( '<a href="%s" aria-label="%s">%s</a>',
