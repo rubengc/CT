@@ -35,6 +35,7 @@ if ( ! class_exists( 'CT' ) ) :
                 self::$instance = new CT();
                 self::$instance->constants();
                 self::$instance->includes();
+                self::$instance->compatibility();
                 self::$instance->hooks();
                 self::$instance->load_textdomain();
 
@@ -79,6 +80,15 @@ if ( ! class_exists( 'CT' ) ) :
          */
         private function includes() {
 
+            // WP_List_Table dependencies
+            if( ! function_exists( 'convert_to_screen' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/template.php';
+            }
+
+            if( ! function_exists( 'get_column_headers' ) ) {
+                require_once ABSPATH . 'wp-admin/includes/screen.php';
+            }
+
             // Includes required WP_List_Table class
             if( ! class_exists( 'WP_List_Table' ) ) {
                 require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
@@ -95,6 +105,19 @@ if ( ! class_exists( 'CT' ) ) :
             require_once CT_DIR . 'includes/class-ct-edit-view.php';
 
             require_once CT_DIR . 'includes/functions.php';
+
+        }
+
+        /**
+         * Include CT compatibility files
+         *
+         * @access      private
+         * @since       1.0.0
+         * @return      void
+         */
+        private function compatibility() {
+
+            require_once CT_DIR . 'compatibility/cmb2.php';
 
         }
 
