@@ -5,8 +5,8 @@
  * @since 1.0.0
  *
  * @package      Custom_Tables
- * @author       Tsunoa <contact@tsunoa.com>, rubengc <rubengcdev@gamil.com>
- * @copyright    Copyright (c) Tsunoa
+ * @author       GamiPress <contact@gamipress.com>, rubengc <rubengcdev@gamil.com>
+ * @copyright    Copyright (c) GamiPress
  */
 // Exit if accessed directly
 defined( 'ABSPATH' ) || exit;
@@ -98,6 +98,7 @@ if ( ! class_exists( 'CT' ) ) :
             require_once CT_DIR . 'includes/class-ct-table-meta.php';
             require_once CT_DIR . 'includes/class-ct-database.php';
             require_once CT_DIR . 'includes/class-ct-database-schema.php';
+            require_once CT_DIR . 'includes/class-ct-database-schema-updater.php';
             require_once CT_DIR . 'includes/class-ct-query.php';
             require_once CT_DIR . 'includes/class-ct-list-table.php';
             require_once CT_DIR . 'includes/class-ct-view.php';
