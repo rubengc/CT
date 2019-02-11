@@ -8,8 +8,13 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * Register a custom table
+ *
+ * @since 1.0.0
+ *
  * @param string    $name
  * @param array     $args
+ *
  * @return CT_Table
  */
 function ct_register_table( $name, $args ) {
@@ -37,7 +42,10 @@ function ct_register_table( $name, $args ) {
 /**
  * Setup the global table
  *
+ * @since 1.0.0
+ *
  * @param CT_Table|string $object CT_Table object or CT_Table name
+ *
  * @return CT_Table $ct_table
  */
 function ct_setup_table( $object ) {
@@ -317,8 +325,8 @@ function _ct_meta_capabilities( $capabilities = null ) {
  *                                 a WP_Post object, an associative array, or a numeric array, respectively. Default OBJECT.
  * @param string           $filter Optional. Type of filter to apply. Accepts 'raw', 'edit', 'db',
  *                                 or 'display'. Default 'raw'.
- * @return WP_Post|array|null Type corresponding to $output on success or null on failure.
- *                            When $output is OBJECT, a `WP_Post` instance is returned.
+ * @return stdClass|array|null Type corresponding to $output on success or null on failure.
+ *                            When $output is OBJECT, a `stdClass` instance is returned.
  */
 function ct_get_object( $object = null, $output = OBJECT, $filter = 'raw' ) {
 
