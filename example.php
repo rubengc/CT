@@ -63,6 +63,7 @@ function yourprefix_init() {
             ),
             'list' => array(
                 // 'per_page' => 40 // This will force the per page initial value
+               'parent_slug' => '', // Add the new fake-CPT to the root
                 // The columns arg is a shortcut of the manage_columns and manage_sortable_columns commonly required hooks
                 'columns' => array(
                     'title'   => array(
